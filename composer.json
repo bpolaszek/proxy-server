@@ -22,7 +22,9 @@
         "zendframework/zend-diactoros": "^1.8"
     },
     "require-dev": {
+        "phpunit/phpunit": "^7.3",
         "symfony/dotenv": "*",
+        "symfony/test-pack": "^1.0",
         "symfony/var-dumper": "*",
         "symfony/web-server-bundle": "*"
     },
