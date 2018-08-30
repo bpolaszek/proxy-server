@@ -1,0 +1,74 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
+parameters:
+    proxy.base_uri: '%env(PROXY_BASE_URI)%'
+    proxy.enable_throttling: '%env(bool:PROXY_ENABLE_THROTTLING)%'
+    proxy.throttling.max_requests: '%env(int:PROXY_THROTTLING_MAX_REQUESTS)%'
+    proxy.throttling.duration: '%env(int:PROXY_THROTTLING_DURATION)%'
+    proxy.throttling.key: '%env(PROXY_THROTTLING_KEY)%'
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        public: false       # Allows optimizing the container by removing unused services; this also means
+                            # fetching services directly from the container via $container->get() won't work.
+                            # The best practice is to be explicit about your dependencies anyway.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/*'
+        exclude: '../src/{DependencyInjection,Entity,Migrations,Tests,Kernel.php}'
+
+    Redis:
+        class: Predis\Client
+
+    Symfony\Component\Cache\Adapter\RedisAdapter:
+        class: Symfony\Component\Cache\Adapter\RedisAdapter
+        arguments:
+            - '@Redis'
+            - '%proxy.throttling.key%'
+
+    BenTools\GuzzleHttp\Middleware\Storage\ThrottleStorageInterface:
+        class: BenTools\GuzzleHttp\Middleware\Storage\Adapter\PSR6Adapter
+        arguments:
+            - '@Psr\Cache\CacheItemPoolInterface'
+
+    BenTools\GuzzleHttp\Middleware\ThrottleConfiguration:
+        class: BenTools\GuzzleHttp\Middleware\ThrottleConfiguration
+        arguments:
+            - '@App\Guzzle\MatchAllRequests'
+            - '%proxy.throttling.max_requests%'
+            - '%proxy.throttling.duration%'
+            - '%proxy.throttling.key%'
+
+    BenTools\GuzzleHttp\Middleware\ThrottleMiddleware:
+        class: BenTools\GuzzleHttp\Middleware\ThrottleMiddleware
+        autowire: true
+        calls:
+            - [ 'registerConfiguration', [ '@BenTools\GuzzleHttp\Middleware\ThrottleConfiguration' ] ]
+
+    GuzzleHttp\HandlerStack:
+        class: GuzzleHttp\HandlerStack
+        factory: App\Guzzle\HandlerStackFactory:__invoke
+        arguments:
+            $enableThrottling: '%proxy.enable_throttling%'
+
+    GuzzleHttp\ClientInterface:
+        class: GuzzleHttp\Client
+        factory: App\Guzzle\ClientFactory:__invoke
+
+    App\Controller:
+        tags: ['controller.service_arguments']
+
+    App\RequestFactory:
+        arguments:
+            $baseUri: '%proxy.base_uri%'
+
+    Psr\Cache\CacheItemPoolInterface:
+        alias: 'Symfony\Component\Cache\Adapter\RedisAdapter'

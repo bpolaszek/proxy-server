@@ -1,0 +1,5 @@
+index:
+    path: /{path}
+    controller: App\Controller::__invoke
+    requirements:
+        path: ".+"
