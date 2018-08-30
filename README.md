@@ -10,7 +10,7 @@ Installation
 
 Clone the current project
 ```bash
-composer create-project bentools/proxy-server my-proxy && cd my-proxy
+composer create-project bentools/proxy-server:1.0.x-dev my-proxy && cd my-proxy
 ```
 
 Init your environment variables
