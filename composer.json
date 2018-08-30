@@ -1,4 +1,5 @@
 {
+    "name": "bentools/proxy-server",
     "type": "project",
     "license": "MIT",
     "description": "A simple proxy server, written in Symfony 4.1.",
